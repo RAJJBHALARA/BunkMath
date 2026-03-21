@@ -14,7 +14,7 @@ Inspired by [Razorpay Fix My Itch](https://razorpay.com/m/fix-my-itch).
 
 ## Live Demo
 
-[Add Vercel/Netlify link here after deployment]
+[https://bunkmath.vercel.app](https://bunkmath.vercel.app)
 
 ## Screenshots
 
