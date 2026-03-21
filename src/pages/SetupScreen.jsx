@@ -5,9 +5,9 @@ const STORAGE_KEY = 'iqSetup'
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const TEMPLATES = [
-  { label: 'Engineering', icon: 'engineering', subjects: ['DBMS', 'OS', 'CN', 'Maths', 'DSA'] },
-  { label: 'Diploma CS', icon: 'computer', subjects: ['C++', 'Web Dev', 'DBMS', 'Networking', 'Maths'] },
-  { label: 'BCA/BSc', icon: 'science', subjects: ['Python', 'Java', 'SQL', 'Statistics', 'English'] },
+  { label: 'Engineering', icon: 'engineering', subjects: ['DBMS (T)', 'DBMS (L)', 'OS (T)', 'OS (L)', 'CN (T)', 'Maths', 'DSA (T)', 'DSA (L)'] },
+  { label: 'Diploma CS', icon: 'computer', subjects: ['C++ (T)', 'C++ (L)', 'Web Dev (T)', 'Web Dev (L)', 'DBMS (T)', 'DBMS (L)', 'Networking', 'Maths'] },
+  { label: 'BCA/BSc', icon: 'science', subjects: ['Python (T)', 'Python (L)', 'Java (T)', 'Java (L)', 'SQL', 'Statistics', 'English'] },
   { label: 'Custom', icon: 'edit', subjects: [] },
 ]
 
@@ -104,7 +104,7 @@ export default function SetupScreen() {
   }
 
   const addSplit = (index, suffix) => {
-    if (subjectCount >= 10) return
+    if (subjectCount >= 20) return
 
     const currentName = subjectNames[index] ? subjectNames[index].replace(/\s*\([TLW]\)$/, '').trim() : ''
     const baseName = currentName || `Subject ${index + 1}`
@@ -273,7 +273,7 @@ export default function SetupScreen() {
                   <span className="material-symbols-outlined text-lg" data-icon="remove">remove</span>
                 </button>
                 <span className="font-headline font-bold text-lg w-4 text-center">{subjectCount}</span>
-                <button className="w-8 h-8 flex items-center justify-center bg-surface-container-high rounded-full text-primary hover:bg-surface-bright active:scale-90 transition-all" onClick={() => setSubjectCount((prev) => Math.min(10, prev + 1))} type="button">
+                <button className="w-8 h-8 flex items-center justify-center bg-surface-container-high rounded-full text-primary hover:bg-surface-bright active:scale-90 transition-all" onClick={() => setSubjectCount((prev) => Math.min(20, prev + 1))} type="button">
                   <span className="material-symbols-outlined text-lg" data-icon="add">add</span>
                 </button>
               </div>
