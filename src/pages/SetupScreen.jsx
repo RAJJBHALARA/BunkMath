@@ -134,6 +134,17 @@ export default function SetupScreen() {
     })
   }
 
+  const removeSubject = (indexToRemove) => {
+    if (subjectCount <= 1) return // Keep at least 1
+
+    setSubjectCount(c => c - 1)
+    
+    setSubjectNames(prev => prev.filter((_, i) => i !== indexToRemove))
+    setSubjectDays(prev => prev.filter((_, i) => i !== indexToRemove))
+    setExistingAttended(prev => prev.filter((_, i) => i !== indexToRemove))
+    setExistingTotal(prev => prev.filter((_, i) => i !== indexToRemove))
+  }
+
   const handleSubmit = () => {
     const trimmedNames = subjectNames.map((name) => name.trim())
 
@@ -301,14 +312,24 @@ export default function SetupScreen() {
             <div className="flex flex-col gap-4">
               {Array.from({ length: subjectCount }).map((_, index) => (
                 <div className="flex flex-col gap-2" key={index + 1}>
-                  <div className="relative">
+                  <div className="relative flex gap-2">
                     <input
-                      className="w-full bg-surface-container-low/50 border border-outline-variant/20 rounded-md py-3 px-4 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/40"
+                      className="flex-1 bg-surface-container-low/50 border border-outline-variant/20 rounded-md py-3 px-4 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/40"
                       onChange={(event) => updateSubjectName(index, event.target.value)}
                       placeholder={`Subject ${index + 1}${index === 0 ? ' (e.g. Data Structures)' : index === 1 ? ' (e.g. OS)' : ''}`}
                       type="text"
                       value={subjectNames[index] ?? ''}
                     />
+                    {subjectCount > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => removeSubject(index)}
+                        className="w-[46px] flex items-center justify-center bg-error-container/20 text-error rounded-md border border-error/20 hover:bg-error-container active:scale-95 transition-all"
+                        title="Remove Subject"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Mid-semester: existing attendance inputs */}
@@ -360,10 +381,10 @@ export default function SetupScreen() {
                   </div>
                   
                   {/* Quick Split Buttons */}
-                  <div className="flex gap-4 mt-2 px-1">
-                    <button type="button" onClick={() => addSplit(index, 'L')} className="text-[10px] text-primary/80 hover:text-primary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Lab</button>
-                    <button type="button" onClick={() => addSplit(index, 'T')} className="text-[10px] text-secondary/80 hover:text-secondary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Theory</button>
-                    <button type="button" onClick={() => addSplit(index, 'W')} className="text-[10px] text-tertiary/80 hover:text-tertiary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Workshop</button>
+                  <div className="flex gap-2 mt-1 px-1">
+                    <button type="button" onClick={() => addSplit(index, 'L')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-primary hover:bg-primary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Lab</button>
+                    <button type="button" onClick={() => addSplit(index, 'T')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-secondary hover:bg-secondary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Theory</button>
+                    <button type="button" onClick={() => addSplit(index, 'W')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-tertiary hover:bg-tertiary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Workshop</button>
                   </div>
                 </div>
               ))}
