@@ -103,6 +103,37 @@ export default function SetupScreen() {
     })
   }
 
+  const addSplit = (index, suffix) => {
+    if (subjectCount >= 10) return
+
+    const currentName = subjectNames[index] ? subjectNames[index].replace(/\s*\([TLW]\)$/, '').trim() : ''
+    const baseName = currentName || `Subject ${index + 1}`
+    const newName = `${baseName} (${suffix})`
+
+    setSubjectCount(c => c + 1)
+
+    setSubjectNames((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, newName)
+      return next
+    })
+    setSubjectDays((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, [])
+      return next
+    })
+    setExistingAttended((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, 0)
+      return next
+    })
+    setExistingTotal((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, 0)
+      return next
+    })
+  }
+
   const handleSubmit = () => {
     const trimmedNames = subjectNames.map((name) => name.trim())
 
@@ -326,6 +357,13 @@ export default function SetupScreen() {
                         </button>
                       )
                     })}
+                  </div>
+                  
+                  {/* Quick Split Buttons */}
+                  <div className="flex gap-4 mt-2 px-1">
+                    <button type="button" onClick={() => addSplit(index, 'L')} className="text-[10px] text-primary/80 hover:text-primary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Lab</button>
+                    <button type="button" onClick={() => addSplit(index, 'T')} className="text-[10px] text-secondary/80 hover:text-secondary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Theory</button>
+                    <button type="button" onClick={() => addSplit(index, 'W')} className="text-[10px] text-tertiary/80 hover:text-tertiary font-bold uppercase tracking-wider flex items-center gap-0.5 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Workshop</button>
                   </div>
                 </div>
               ))}
