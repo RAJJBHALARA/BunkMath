@@ -25,8 +25,8 @@ export default function LoginScreen() {
       await signInWithPopup(auth, googleProvider)
       navigate('/dashboard')
     } catch (err) {
-      console.error(err)
-      setError('Google Sign-In failed. Please try again.')
+      console.error('Google Auth Error:', err)
+      setError(`Google Sign-In failed: ${err.message}`)
     } finally {
       setLoading(false)
     }
