@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AISetupModal from '../components/AISetupModal'
 
 const STORAGE_KEY = 'iqSetup'
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -26,6 +27,9 @@ export default function SetupScreen() {
   const [midSemester, setMidSemester] = useState(false)
   const [existingAttended, setExistingAttended] = useState([0, 0, 0, 0])
   const [existingTotal, setExistingTotal] = useState([0, 0, 0, 0])
+
+  // AI Modal
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
 
   useEffect(() => {
     setSubjectNames((prev) => {
@@ -167,6 +171,25 @@ export default function SetupScreen() {
     setExistingTotal(prev => prev.filter((_, i) => i !== indexToRemove))
   }
 
+  const handleAIExtraction = (dataArray) => {
+    if (!dataArray || dataArray.length === 0) return
+
+    const count = dataArray.length
+    setSubjectCount(count)
+    
+    // Automatically turn on midSemester if any subject has attendance data
+    const hasAttendanceData = dataArray.some(d => d.attended > 0 || d.total > 0)
+    if (hasAttendanceData) setMidSemester(true)
+
+    setSubjectNames(dataArray.map(d => d.name || ''))
+    setSubjectBatches(dataArray.map(d => d.batch || null))
+    setSubjectDays(dataArray.map(d => d.days || []))
+    setExistingAttended(dataArray.map(d => d.attended || 0))
+    setExistingTotal(dataArray.map(d => d.total || 0))
+    
+    setIsAIModalOpen(false)
+  }
+
   const handleSubmit = () => {
     const trimmedNames = subjectNames.map((name) => name.trim())
 
@@ -239,6 +262,24 @@ export default function SetupScreen() {
               </button>
             ))}
           </div>
+          
+          <button 
+            type="button"
+            onClick={() => setIsAIModalOpen(true)}
+            className="w-full mt-2 glass-card rounded-xl p-4 flex items-center justify-between hover:bg-white/[0.04] hover:ring-1 hover:ring-primary/30 transition-all active:scale-[0.98] group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-headline font-bold text-sm text-on-surface">Import with AI</span>
+                <span className="font-body text-[10px] uppercase tracking-wider text-on-surface-variant mt-0.5">Scan Timetable Screenshot</span>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-primary/50 group-hover:text-primary transition-colors relative z-10">chevron_right</span>
+          </button>
         </section>
 
         <div className="glass-card rounded-lg p-6 flex flex-col gap-8 shadow-2xl">
@@ -449,6 +490,13 @@ export default function SetupScreen() {
           <p className="text-center text-on-surface-variant/40 text-[10px] mt-6 tracking-widest uppercase font-label">Designed for the modern bunk expert</p>
         </footer>
       </main>
+
+      {isAIModalOpen && (
+        <AISetupModal 
+          onClose={() => setIsAIModalOpen(false)} 
+          onDataExtracted={handleAIExtraction} 
+        />
+      )}
     </div>
   )
 }

@@ -56,9 +56,20 @@ export default function Dashboard() {
 
     const totalAttended = setupData.subjects.reduce((sum, subject) => sum + subject.attended, 0)
     const totalClasses = setupData.subjects.reduce((sum, subject) => sum + subject.total, 0)
-    const overallPercent = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0
-    const roundedOverallPercent = totalClasses > 0 ? Math.round(overallPercent) : null
-    const overallStatus = totalClasses > 0 ? getStatus(overallPercent, setupData.minPercent) : null
+
+    let overallPercent = 0
+    if (setupData.countMode === 'overall') {
+      overallPercent = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0
+    } else {
+      const validSubjects = setupData.subjects.filter((s) => s.total > 0)
+      if (validSubjects.length > 0) {
+        const sumPercents = validSubjects.reduce((sum, subject) => sum + (subject.attended / subject.total) * 100, 0)
+        overallPercent = sumPercents / validSubjects.length
+      }
+    }
+
+    const roundedOverallPercent = setupData.subjects.some(s => s.total > 0) ? Math.round(overallPercent) : null
+    const overallStatus = roundedOverallPercent !== null ? getStatus(overallPercent, setupData.minPercent) : null
 
     // Feature 4: Bunk Budget
     const minRatio = setupData.minPercent / 100
