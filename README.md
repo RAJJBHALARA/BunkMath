@@ -37,6 +37,17 @@ Inspired by [Razorpay Fix My Itch](https://razorpay.com/m/fix-my-itch).
 - 🎨 **Dark purple Gen Z aesthetic** — glassmorphism + neon glow UI
 - ⚙️ **Configurable** — works with any college's attendance policy (75/80/85%)
 
+## The "Hidden Data" Problem & Our Clever Solution
+During development, we attempted to scrape real-time attendance directly from University Portals. We discovered a massive roadblock: **Universities securely encapsulate raw attendance data (Attended / Total classes) on the backend server, and only ever transmit the final calculated percentage (e.g., "64%") to the frontend client to prevent exactly this kind of scraping.** 
+
+Because the raw integers literally do not exist in the client network traffic, standard integration isn't possible.
+
+To creatively bypass this backend restriction, we built the **Timetable Auto-Calculator**. 
+- BunkMath houses a complete global calendar of University Holidays.
+- Users input their weekly timetable (Days of the week) and their only known data point: the Aggregate Percentage.
+- Our custom `calendar.js` algorithm maps their active days against the start of the semester, completely removing known university holidays to reverse-engineer the absolute number of `Conducted` classes.
+- It then interpolates the raw `Attended` classes from the percentage, saving users from having to manually track their existing attendance records when onboarding!
+
 ## Tech Stack
 
 | Technology | Usage |
