@@ -1,21 +1,19 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
-
-const STORAGE_KEY = 'iqSetup'
+import { useAttendance } from '../hooks/useAttendance'
 
 export default function StatsScreen() {
   const navigate = useNavigate()
+  const { data, loading } = useAttendance()
 
-  const data = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return null
-      return JSON.parse(raw)
-    } catch {
-      return null
-    }
-  }, [])
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0e0e13] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   if (!data) {
     navigate('/setup', { replace: true })

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AISetupModal from '../components/AISetupModal'
+import { useAttendance } from '../hooks/useAttendance'
 
 const STORAGE_KEY = 'iqSetup'
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -14,6 +15,8 @@ const TEMPLATES = [
 
 export default function SetupScreen() {
   const navigate = useNavigate()
+  const { data: remoteData, updateData, loading: dataLoading } = useAttendance()
+  
   const [minPercent, setMinPercent] = useState(80)
   const [countMode, setCountMode] = useState('perSubject')
   const [subjectCount, setSubjectCount] = useState(4)
@@ -22,6 +25,7 @@ export default function SetupScreen() {
   const [subjectBatches, setSubjectBatches] = useState([null, null, null, null])
   const [error, setError] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Mid-semester entry
   const [midSemester, setMidSemester] = useState(false)
@@ -30,6 +34,12 @@ export default function SetupScreen() {
 
   // AI Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!dataLoading && remoteData) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [remoteData, dataLoading, navigate])
 
   useEffect(() => {
     setSubjectNames((prev) => {
@@ -190,7 +200,7 @@ export default function SetupScreen() {
     setIsAIModalOpen(false)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmedNames = subjectNames.map((name) => name.trim())
 
     if (trimmedNames.some((name) => !name)) {
@@ -207,6 +217,7 @@ export default function SetupScreen() {
       }
     }
 
+    setIsSubmitting(true)
     const setupData = {
       minPercent,
       countMode,
@@ -221,8 +232,14 @@ export default function SetupScreen() {
       })),
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(setupData))
-    navigate('/dashboard', { replace: true })
+    try {
+      await updateData(setupData)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError('Failed to save to cloud. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -482,9 +499,20 @@ export default function SetupScreen() {
           </section>
         </div>
         <footer className="mt-4">
-          <button className="w-full py-5 rounded-lg bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-headline font-extrabold text-lg flex items-center justify-center gap-2 shadow-2xl shadow-primary-dim/30 active:scale-[0.98] transition-all group" onClick={handleSubmit} type="button">
-            Let's Go
-            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+          <button 
+            className="w-full py-5 rounded-lg bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-headline font-extrabold text-lg flex items-center justify-center gap-2 shadow-2xl shadow-primary-dim/30 active:scale-[0.98] transition-all group disabled:opacity-50" 
+            onClick={handleSubmit} 
+            disabled={isSubmitting}
+            type="button"
+          >
+            {isSubmitting ? (
+              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <>
+                Let's Go
+                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+              </>
+            )}
           </button>
           {error && <p className="text-center text-error text-[11px] mt-3 tracking-wide uppercase font-label">{error}</p>}
           <p className="text-center text-on-surface-variant/40 text-[10px] mt-6 tracking-widest uppercase font-label">Designed for the modern bunk expert</p>

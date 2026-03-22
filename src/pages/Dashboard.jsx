@@ -3,53 +3,26 @@ import { useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import SubjectCard from '../components/SubjectCard'
 import UpdateModal from '../components/UpdateModal'
+import { useAttendance } from '../hooks/useAttendance'
 
 const STORAGE_KEY = 'iqSetup'
-const STREAK_KEY = 'iqStreak'
-
 const getStatus = (percent, minPercent) => {
   if (percent >= minPercent) return 'safe'
   if (percent >= minPercent - 5) return 'warning'
   return 'danger'
 }
 
-const getStreakData = () => {
-  try {
-    const raw = localStorage.getItem(STREAK_KEY)
-    if (!raw) return { count: 0, lastMarked: null }
-    return JSON.parse(raw)
-  } catch {
-    return { count: 0, lastMarked: null }
-  }
-}
-
-const getTodayString = () => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [setupData, setSetupData] = useState(null)
+  const { data: setupData, updateData, loading: dataLoading } = useAttendance()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [streak, setStreak] = useState(getStreakData())
+  const [streak, setStreak] = useState({ count: 0, lastMarked: null })
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-
-    if (!raw) {
-      navigate('/setup', { replace: true })
-      return
-    }
-
-    try {
-      const parsed = JSON.parse(raw)
-      setSetupData(parsed)
-    } catch {
-      localStorage.removeItem(STORAGE_KEY)
+    if (!dataLoading && !setupData) {
       navigate('/setup', { replace: true })
     }
-  }, [navigate])
+  }, [setupData, dataLoading, navigate])
 
   const metrics = useMemo(() => {
     if (!setupData) return null
@@ -108,6 +81,14 @@ export default function Dashboard() {
     }
   }, [setupData])
 
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-[#0e0e13] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
   if (!setupData || !metrics) return null
 
   const hasClasses = metrics.totalClasses > 0
@@ -128,39 +109,19 @@ export default function Dashboard() {
     ? 'Warning'
     : 'Danger'
 
-  const saveAttendance = (updatedSubjects) => {
+  const saveAttendance = async (updatedSubjects) => {
     const updatedData = {
       ...setupData,
       subjects: updatedSubjects,
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData))
-    setSetupData(updatedData)
-    setIsModalOpen(false)
-
-    // Feature 2: Update streak
-    const today = getTodayString()
-    const currentStreak = getStreakData()
-    let newCount = 1
-
-    if (currentStreak.lastMarked) {
-      const lastDate = new Date(currentStreak.lastMarked)
-      const todayDate = new Date(today)
-      const diffDays = Math.round((todayDate - lastDate) / 86400000)
-
-      if (diffDays === 0) {
-        // Same day, keep count
-        newCount = currentStreak.count
-      } else if (diffDays === 1) {
-        // Consecutive day
-        newCount = currentStreak.count + 1
-      }
-      // else gap > 1 day, reset to 1
+    try {
+      await updateData(updatedData)
+      setIsModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to sync with cloud. Please try again.')
     }
-
-    const newStreak = { count: newCount, lastMarked: today }
-    localStorage.setItem(STREAK_KEY, JSON.stringify(newStreak))
-    setStreak(newStreak)
   }
 
   return (
