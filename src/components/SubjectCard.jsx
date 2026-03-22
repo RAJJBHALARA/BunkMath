@@ -7,7 +7,7 @@ const getSubjectStatus = (attended, total, minPercent) => {
 }
 
 export default function SubjectCard({ subject, minPercent }) {
-  const { attended, total, name } = subject
+  const { attended, total, name, batch } = subject
   const { currentPercent, status } = getSubjectStatus(attended, total, minPercent)
   const minRatio = minPercent / 100
   const isEmpty = status === 'empty'
@@ -40,7 +40,14 @@ export default function SubjectCard({ subject, minPercent }) {
   return (
     <div className="glass-card rounded-lg p-5 space-y-4 shadow-sm overflow-hidden">
       <div className="flex justify-between items-start">
-        <span className="font-headline font-semibold text-lg text-on-surface leading-tight">{name}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-headline font-semibold text-lg text-on-surface leading-tight">{name}</span>
+          {batch && (
+            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${batch === 'A' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-secondary/10 text-secondary border-secondary/30'}`}>
+              {batch} Batch
+            </span>
+          )}
+        </div>
         <span className={`font-headline font-bold text-xl ${percentTextClass}`}>{roundedPercent !== null ? `${roundedPercent}%` : '--'}</span>
       </div>
       <div className="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">

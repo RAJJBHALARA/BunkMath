@@ -86,7 +86,14 @@ export default function UpdateModal({ subjects, onClose, onSave }) {
                 return (
                   <div className="flex items-center justify-between bg-white/[0.03] p-5 rounded-3xl border border-white/5" key={subject.id}>
                     <div className="flex flex-col">
-                      <span className="font-headline font-semibold text-on-surface text-[15px]">{subject.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-headline font-semibold text-on-surface text-[15px]">{subject.name}</span>
+                        {subject.batch && (
+                          <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${subject.batch === 'A' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-secondary/10 text-secondary border-secondary/30'}`}>
+                            {subject.batch}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-body text-[10px] text-on-surface-variant uppercase tracking-wider mt-0.5">{showTime}</span>
                     </div>
                     <div className="flex gap-2.5">

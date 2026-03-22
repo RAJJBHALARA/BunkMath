@@ -18,6 +18,7 @@ export default function SetupScreen() {
   const [subjectCount, setSubjectCount] = useState(4)
   const [subjectNames, setSubjectNames] = useState(['', '', '', ''])
   const [subjectDays, setSubjectDays] = useState([[], [], [], []])
+  const [subjectBatches, setSubjectBatches] = useState([null, null, null, null])
   const [error, setError] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState(null)
 
@@ -51,6 +52,12 @@ export default function SetupScreen() {
         return [...prev, ...Array(subjectCount - prev.length).fill(0)]
       return prev.slice(0, subjectCount)
     })
+    setSubjectBatches((prev) => {
+      if (prev.length === subjectCount) return prev
+      if (prev.length < subjectCount)
+        return [...prev, ...Array(subjectCount - prev.length).fill(null)]
+      return prev.slice(0, subjectCount)
+    })
   }, [subjectCount])
 
   const applyTemplate = (template, index) => {
@@ -60,6 +67,7 @@ export default function SetupScreen() {
       setSubjectCount(count)
       setSubjectNames([...template.subjects])
       setSubjectDays(Array(count).fill([]))
+      setSubjectBatches(Array(count).fill(null))
       setExistingAttended(Array(count).fill(0))
       setExistingTotal(Array(count).fill(0))
     }
@@ -69,6 +77,14 @@ export default function SetupScreen() {
     setSubjectNames((prev) => {
       const next = [...prev]
       next[index] = value
+      return next
+    })
+  }
+
+  const toggleBatch = (index, batch) => {
+    setSubjectBatches((prev) => {
+      const next = [...prev]
+      next[index] = prev[index] === batch ? null : batch
       return next
     })
   }
@@ -122,6 +138,11 @@ export default function SetupScreen() {
       next.splice(index + 1, 0, [])
       return next
     })
+    setSubjectBatches((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, null)
+      return next
+    })
     setExistingAttended((prev) => {
       const next = [...prev]
       next.splice(index + 1, 0, 0)
@@ -141,6 +162,7 @@ export default function SetupScreen() {
     
     setSubjectNames(prev => prev.filter((_, i) => i !== indexToRemove))
     setSubjectDays(prev => prev.filter((_, i) => i !== indexToRemove))
+    setSubjectBatches(prev => prev.filter((_, i) => i !== indexToRemove))
     setExistingAttended(prev => prev.filter((_, i) => i !== indexToRemove))
     setExistingTotal(prev => prev.filter((_, i) => i !== indexToRemove))
   }
@@ -172,6 +194,7 @@ export default function SetupScreen() {
         attended: midSemester ? existingAttended[index] : 0,
         total: midSemester ? existingTotal[index] : 0,
         days: subjectDays[index] ?? [],
+        batch: subjectBatches[index] ?? null,
       })),
     }
 
@@ -380,8 +403,34 @@ export default function SetupScreen() {
                     })}
                   </div>
                   
-                  {/* Quick Split Buttons */}
+                  {/* Batch Toggle Buttons */}
                   <div className="flex gap-2 mt-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleBatch(index, 'A')}
+                      className={
+                        subjectBatches[index] === 'A'
+                          ? 'px-3 py-1.5 rounded-full bg-gradient-to-br from-primary-dim to-primary text-on-primary-fixed text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm shadow-primary/20 active:scale-95 transition-all w-fit'
+                          : 'px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-primary hover:bg-primary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit'
+                      }
+                    >
+                      <span className="material-symbols-outlined text-[14px]">group</span> A Batch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleBatch(index, 'B')}
+                      className={
+                        subjectBatches[index] === 'B'
+                          ? 'px-3 py-1.5 rounded-full bg-gradient-to-br from-secondary to-secondary text-on-primary-fixed text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm shadow-secondary/20 active:scale-95 transition-all w-fit'
+                          : 'px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-secondary hover:bg-secondary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit'
+                      }
+                    >
+                      <span className="material-symbols-outlined text-[14px]">group</span> B Batch
+                    </button>
+                  </div>
+
+                  {/* Quick Split Buttons */}
+                  <div className="flex gap-2 px-1">
                     <button type="button" onClick={() => addSplit(index, 'L')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-primary hover:bg-primary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Lab</button>
                     <button type="button" onClick={() => addSplit(index, 'T')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-secondary hover:bg-secondary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Theory</button>
                     <button type="button" onClick={() => addSplit(index, 'W')} className="px-3 py-1.5 rounded-full bg-surface-container-highest border border-outline-variant/30 text-[10px] text-tertiary hover:bg-tertiary/10 font-bold uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all w-fit"><span className="material-symbols-outlined text-[14px]">add</span> Workshop</button>
