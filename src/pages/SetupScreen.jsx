@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AISetupModal from '../components/AISetupModal'
 import { useAttendance } from '../hooks/useAttendance'
+import { calculateExactClasses } from '../utils/calendar'
 
 const STORAGE_KEY = 'iqSetup'
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -29,8 +30,11 @@ export default function SetupScreen() {
 
   // Mid-semester entry
   const [midSemester, setMidSemester] = useState(false)
+  const [midSemesterMode, setMidSemesterMode] = useState('manual')
+  const [semesterStartDate, setSemesterStartDate] = useState('2026-01-27')
   const [existingAttended, setExistingAttended] = useState([0, 0, 0, 0])
   const [existingTotal, setExistingTotal] = useState([0, 0, 0, 0])
+  const [existingPercentage, setExistingPercentage] = useState([0, 0, 0, 0])
 
   // AI Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
@@ -66,6 +70,12 @@ export default function SetupScreen() {
         return [...prev, ...Array(subjectCount - prev.length).fill(0)]
       return prev.slice(0, subjectCount)
     })
+    setExistingPercentage((prev) => {
+      if (prev.length === subjectCount) return prev
+      if (prev.length < subjectCount)
+        return [...prev, ...Array(subjectCount - prev.length).fill(0)]
+      return prev.slice(0, subjectCount)
+    })
     setSubjectBatches((prev) => {
       if (prev.length === subjectCount) return prev
       if (prev.length < subjectCount)
@@ -84,6 +94,7 @@ export default function SetupScreen() {
       setSubjectBatches(Array(count).fill(null))
       setExistingAttended(Array(count).fill(0))
       setExistingTotal(Array(count).fill(0))
+      setExistingPercentage(Array(count).fill(0))
     }
   }
 
@@ -115,6 +126,15 @@ export default function SetupScreen() {
   const updateExistingTotal = (index, value) => {
     const num = Math.max(0, parseInt(value) || 0)
     setExistingTotal((prev) => {
+      const next = [...prev]
+      next[index] = num
+      return next
+    })
+  }
+
+  const updateExistingPercentage = (index, value) => {
+    const num = Math.min(100, Math.max(0, parseInt(value) || 0))
+    setExistingPercentage((prev) => {
       const next = [...prev]
       next[index] = num
       return next
@@ -167,6 +187,11 @@ export default function SetupScreen() {
       next.splice(index + 1, 0, 0)
       return next
     })
+    setExistingPercentage((prev) => {
+      const next = [...prev]
+      next.splice(index + 1, 0, 0)
+      return next
+    })
   }
 
   const removeSubject = (indexToRemove) => {
@@ -179,6 +204,7 @@ export default function SetupScreen() {
     setSubjectBatches(prev => prev.filter((_, i) => i !== indexToRemove))
     setExistingAttended(prev => prev.filter((_, i) => i !== indexToRemove))
     setExistingTotal(prev => prev.filter((_, i) => i !== indexToRemove))
+    setExistingPercentage(prev => prev.filter((_, i) => i !== indexToRemove))
   }
 
   const handleAIExtraction = (dataArray) => {
@@ -196,6 +222,7 @@ export default function SetupScreen() {
     setSubjectDays(dataArray.map(d => d.days || []))
     setExistingAttended(dataArray.map(d => d.attended || 0))
     setExistingTotal(dataArray.map(d => d.total || 0))
+    setExistingPercentage(dataArray.map(d => 0))
     
     setIsAIModalOpen(false)
   }
@@ -208,7 +235,7 @@ export default function SetupScreen() {
       return
     }
 
-    if (midSemester) {
+    if (midSemester && midSemesterMode === 'manual') {
       for (let i = 0; i < subjectCount; i++) {
         if (existingAttended[i] > existingTotal[i]) {
           setError(`Attended can't be more than total for ${trimmedNames[i]}`)
@@ -218,18 +245,35 @@ export default function SetupScreen() {
     }
 
     setIsSubmitting(true)
+    const dayMapping = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 }
+
     const setupData = {
       minPercent,
       countMode,
       createdAt: new Date().toISOString(),
-      subjects: trimmedNames.map((name, index) => ({
-        id: index + 1,
-        name,
-        attended: midSemester ? existingAttended[index] : 0,
-        total: midSemester ? existingTotal[index] : 0,
-        days: subjectDays[index] ?? [],
-        batch: subjectBatches[index] ?? null,
-      })),
+      subjects: trimmedNames.map((name, index) => {
+        let att = 0;
+        let tot = 0;
+        if (midSemester) {
+          if (midSemesterMode === 'manual') {
+            att = existingAttended[index];
+            tot = existingTotal[index];
+          } else {
+            const activeDaysNum = (subjectDays[index] || []).map(d => dayMapping[d]);
+            const exact = calculateExactClasses(semesterStartDate, activeDaysNum, existingPercentage[index] || 0);
+            att = exact.attended;
+            tot = exact.total;
+          }
+        }
+        return {
+          id: index + 1,
+          name,
+          attended: att,
+          total: tot,
+          days: subjectDays[index] ?? [],
+          batch: subjectBatches[index] ?? null,
+        }
+      }),
     }
 
     try {
@@ -384,7 +428,39 @@ export default function SetupScreen() {
               </button>
             </div>
             {midSemester && (
-              <p className="text-on-surface-variant/60 text-[11px] tracking-wide">Enter your current attended & total classes for each subject below</p>
+              <div className="flex flex-col gap-4 animate-fade-in">
+                <div className="flex p-1 bg-surface-container-lowest/50 rounded-full border border-outline-variant/10">
+                  <button
+                    className={midSemesterMode === 'manual' ? 'flex-1 py-1.5 rounded-full bg-surface-container-highest text-on-surface font-medium text-[12px]' : 'flex-1 py-1.5 rounded-full text-on-surface-variant font-medium text-[12px]'}
+                    onClick={() => setMidSemesterMode('manual')}
+                    type="button"
+                  >
+                    Exact Numbers
+                  </button>
+                  <button
+                    className={midSemesterMode === 'timetable' ? 'flex-1 py-1.5 rounded-full bg-surface-container-highest text-on-surface font-medium text-[12px] flex items-center justify-center gap-1' : 'flex-1 py-1.5 rounded-full text-on-surface-variant font-medium text-[12px] flex items-center justify-center gap-1'}
+                    onClick={() => setMidSemesterMode('timetable')}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">calendar_month</span> Timetable
+                  </button>
+                </div>
+                {midSemesterMode === 'timetable' && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-on-surface-variant/80 text-xs tracking-wide uppercase">Semester Start Date</label>
+                    <input 
+                      type="date" 
+                      value={semesterStartDate} 
+                      onChange={(e) => setSemesterStartDate(e.target.value)}
+                      className="bg-surface-container-low/50 border border-outline-variant/20 rounded-md py-2 px-3 text-sm focus:outline-none focus:border-primary/50 text-on-surface"
+                    />
+                    <p className="text-primary-dim text-[10px] mt-1">We'll cross-reference your weekly schedule with the Master Holiday calendar to calculate exact class counts!</p>
+                  </div>
+                )}
+                {midSemesterMode === 'manual' && (
+                  <p className="text-on-surface-variant/60 text-[11px] tracking-wide">Enter your current attended & total classes below</p>
+                )}
+              </div>
             )}
           </section>
 
@@ -414,7 +490,7 @@ export default function SetupScreen() {
                   </div>
 
                   {/* Mid-semester: existing attendance inputs */}
-                  {midSemester && (
+                  {midSemester && midSemesterMode === 'manual' && (
                     <div className="flex gap-3">
                       <div className="flex-1 relative">
                         <input
@@ -438,6 +514,20 @@ export default function SetupScreen() {
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-on-surface-variant/50 uppercase">total</span>
                       </div>
+                    </div>
+                  )}
+                  {midSemester && midSemesterMode === 'timetable' && (
+                    <div className="relative">
+                      <input
+                        className="w-full bg-surface-container-low/50 border border-outline-variant/20 rounded-md py-2.5 px-3 text-sm focus:outline-none focus:border-tertiary/50 focus:ring-1 focus:ring-tertiary/20 transition-all placeholder:text-on-surface-variant/40"
+                        onChange={(e) => updateExistingPercentage(index, e.target.value)}
+                        placeholder="Current Attendance % (e.g. 64)"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={existingPercentage[index] || ''}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[14px] font-bold text-on-surface-variant/50">%</span>
                     </div>
                   )}
 
