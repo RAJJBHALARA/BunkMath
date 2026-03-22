@@ -1,89 +1,55 @@
 import { useState, useRef } from 'react'
 
 export default function AISetupModal({ onClose, onDataExtracted }) {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('geminiApiKey') || import.meta.env.VITE_GEMINI_API_KEY || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [base64Image, setBase64Image] = useState(null)
   const fileInputRef = useRef(null)
   
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
-    if (!apiKey) {
-      setError('Please provide a Gemini API Key first.')
+    setError(null)
+
+    // Convert image to base64 for preview and sending to backend
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => {
+      setPreview(reader.result)
+      setBase64Image(reader.result.split(',')[1])
+    }
+  }
+
+  const handleAnalyze = async () => {
+    if (!base64Image) {
+      setError('Please select an image first.')
       return
     }
-
-    localStorage.setItem('geminiApiKey', apiKey)
 
     try {
       setLoading(true)
       setError(null)
 
-      // Convert image to base64
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = async () => {
-        const base64Data = reader.result.split(',')[1]
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      })
 
-        const prompt = `You are a strict data extraction bot. Analyze this timetable or attendance screenshot.
-Extract the student's subjects, attended classes, total classes, and any schedule days.
-Also try to identify if a subject is a theory, lab, or workshop and assign a batch if visible (A or B).
-If attended/total numbers are not visible, assume 0.
-
-Return ONLY a valid JSON array of objects with these exact keys:
-- "name": string (subject name, clean and concise)
-- "attended": number
-- "total": number
-- "batch": "A" | "B" | null
-- "days": array of strings (choose from: "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"). If unknown, empty array.
-
-Example:
-[
-  { "name": "Data Structures", "attended": 12, "total": 15, "batch": null, "days": ["Mon", "Wed"] },
-  { "name": "DBMS (L)", "attended": 3, "total": 4, "batch": "A", "days": ["Tue"] }
-]
-
-Do not include markdown tags (\`\`\`json) or any other text. Just the raw JSON array.`
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: file.type, data: base64Data } }
-              ]
-            }],
-            generationConfig: {
-              temperature: 0.1,
-              response_mime_type: 'application/json'
-            }
-          })
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze image. Please verify your API Key and internet connection.')
-        }
-
-        const result = await response.json()
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text
-        
-        if (!text) throw new Error('No data returned from AI.')
-
-        let extractedData
-        try {
-          extractedData = JSON.parse(text)
-          if (!Array.isArray(extractedData)) throw new Error('Data is not an array')
-        } catch (err) {
-          console.error('API returned non-JSON:', text)
-          throw new Error('AI returned an invalid format. Please try again with a clearer screenshot.')
-        }
-
-        onDataExtracted(extractedData)
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData.error || 'Failed to analyze image. Please ensure your Vercel deployment is configured with a GEMINI_API_KEY.')
       }
+
+      const extractedData = await response.json()
+      
+      if (!extractedData || !Array.isArray(extractedData)) {
+        throw new Error('AI returned an invalid format. Please try again with a clearer screenshot.')
+      }
+
+      onDataExtracted(extractedData)
     } catch (err) {
       setError(err.message || 'An unexpected error occurred.')
       setLoading(false)
@@ -92,7 +58,7 @@ Do not include markdown tags (\`\`\`json) or any other text. Just the raw JSON a
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-6 text-on-surface">
         <div className="glass-card w-full max-w-[390px] rounded-3xl p-6 relative shadow-2xl overflow-hidden border border-white/10">
           
           <div className="flex justify-between items-center mb-6">
@@ -106,19 +72,6 @@ Do not include markdown tags (\`\`\`json) or any other text. Just the raw JSON a
           </div>
 
           <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant font-headline">Gemini API Key</label>
-              <input 
-                type="password"
-                placeholder="AIzaSy..." 
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                disabled={loading}
-                className="w-full bg-surface-container-high/50 border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all font-mono"
-              />
-              <p className="text-[10px] text-on-surface-variant/60 leading-tight">Key is stored locally on your device. Get a free key from Google AI Studio.</p>
-            </div>
-
             {error && (
               <div className="bg-error-container/20 border border-error/30 text-error text-[11px] p-3 rounded-lg font-medium flex items-start gap-2">
                 <span className="material-symbols-outlined text-[14px]">error</span>
@@ -127,21 +80,41 @@ Do not include markdown tags (\`\`\`json) or any other text. Just the raw JSON a
             )}
 
             {!loading ? (
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full relative group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-dim to-primary rounded-2xl opacity-20 blur-xl group-hover:opacity-30 transition-opacity"></div>
-                <div className="bg-surface-container border border-dashed border-primary/30 rounded-2xl p-8 flex flex-col items-center gap-3 relative z-10 group-hover:border-primary/60 transition-colors cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-headline font-bold text-sm text-on-surface">Upload Screenshot</p>
-                    <p className="text-[11px] text-on-surface-variant mt-1">Timetable or attendance portal</p>
-                  </div>
+              <div className="space-y-4">
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full bg-surface-container border border-dashed border-primary/30 rounded-2xl p-6 flex flex-col items-center gap-3 relative group hover:border-primary/60 transition-colors cursor-pointer"
+                >
+                  {preview ? (
+                    <div className="w-full aspect-video rounded-xl overflow-hidden border border-white/10 relative">
+                      <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white">Change Photo</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-headline font-bold text-sm">Upload Screenshot</p>
+                        <p className="text-[11px] text-on-surface-variant mt-1">Timetable or attendance portal</p>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </button>
+
+                {preview && (
+                  <button 
+                    onClick={handleAnalyze}
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-primary-dim to-primary text-on-primary-fixed font-headline font-bold text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <span>Analyze Timetable</span>
+                    <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">auto_awesome</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="bg-surface-container border border-primary/20 rounded-2xl p-8 flex flex-col items-center gap-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
@@ -179,3 +152,4 @@ Do not include markdown tags (\`\`\`json) or any other text. Just the raw JSON a
     </>
   )
 }
+
